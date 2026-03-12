@@ -1,0 +1,34 @@
+linters:
+  enable:
+    - loglint
+
+linters-settings:
+  custom:
+    loglint:
+      type: module
+      description: Checks log messages follow style rules
+      settings:
+        # Allow log messages to start with uppercase letter
+        # allow_uppercase_start: true
+        
+        # Allow non-English characters (Cyrillic, Chinese, etc.)
+        # allow_non_english: true
+        
+        # Allow special characters and emojis in log messages
+        # allow_special_chars: true
+        
+        # Allow sensitive data keywords in log messages (not recommended)
+        # allow_sensitive_data: true
+        
+        # Custom sensitive keywords (add to default list)
+        # sensitive_keywords:
+        #   - "my_secret"
+        
+        # Only allow log messages matching these patterns (optional)
+        # allowed_patterns:
+        #   - "^user.*"
+        
+        # Disallow log messages matching these patterns (optional)
+        # disallowed_patterns:
+        #   - "password"
+        #   - "secret"
