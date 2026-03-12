@@ -1,8 +1,8 @@
 .PHONY: build test lint clean
 
 run:
-	go run ./cmd/loglint ./testdata/bad/. &
-	go run ./cmd/loglint ./testdata/good/.
+	go run ./cmd/loglint ./testdata/bad/ &
+	go run ./cmd/loglint ./testdata/good/
 
 build:
 	go build -o bin/loglint ./cmd/loglint
