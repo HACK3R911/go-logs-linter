@@ -1,0 +1,221 @@
+package detector
+
+import (
+	"go/ast"
+	"go/token"
+	"strings"
+
+	"golang.org/x/tools/go/analysis"
+)
+
+const (
+	LoggerSlog LoggerType = iota
+	LoggerZap
+	// LoggerUnknown
+)
+
+type LogCall struct {
+	Logger   LoggerType
+	Method   string
+	Messages []LogMessage
+}
+
+type LogMessage struct {
+	Text     string
+	Position token.Pos
+}
+
+type LoggerType int
+
+type LoggerDetector struct {
+	slogIdent   string
+	zapIdent    string
+	slogMethods map[string]bool
+	zapMethods  map[string]bool
+}
+
+func NewLoggerDetector() *LoggerDetector {
+	return &LoggerDetector{
+		slogIdent: "slog",
+		zapIdent:  "zap",
+		slogMethods: map[string]bool{
+			"Debug":        true,
+			"Info":         true,
+			"Warn":         true,
+			"Error":        true,
+			"DebugContext": true,
+			"InfoContext":  true,
+			"WarnContext":  true,
+			"ErrorContext": true,
+		},
+		zapMethods: map[string]bool{
+			"Debug":  true,
+			"Info":   true,
+			"Warn":   true,
+			"Error":  true,
+			"Debugw": true,
+			"Infow":  true,
+			"Warnw":  true,
+			"Errorw": true,
+		},
+	}
+}
+
+func (d *LoggerDetector) Detect(pass *analysis.Pass, call *ast.CallExpr) *LogCall {
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return nil
+	}
+
+	ident, ok := sel.X.(*ast.Ident)
+	if !ok {
+		return nil
+	}
+
+	methodName := sel.Sel.Name
+
+	if d.isSlogImport(pass, ident) {
+		return d.detectSlogCall(sel, call)
+	}
+
+	if d.isZapImport(pass, ident) {
+		return d.detectZapCall(call, methodName)
+	}
+
+	if d.isLogMethod(methodName) {
+		if d.isZapPackageUsed(pass) {
+			return d.detectZapCall(call, methodName)
+		}
+	}
+
+	return nil
+}
+
+func (d *LoggerDetector) isSlogImport(pass *analysis.Pass, ident *ast.Ident) bool {
+	for _, imp := range pass.Pkg.Imports() {
+		if imp.Path() == "log/slog" || imp.Path() == "golang.org/x/exp/slog" {
+			if ident.Name == d.slogIdent || ident.Name == "_" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (d *LoggerDetector) isZapImport(pass *analysis.Pass, ident *ast.Ident) bool {
+	for _, imp := range pass.Pkg.Imports() {
+		if imp.Path() == "go.uber.org/zap" {
+			if ident.Name == d.zapIdent || ident.Name == "_" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (d *LoggerDetector) isZapPackageUsed(pass *analysis.Pass) bool {
+	for _, imp := range pass.Pkg.Imports() {
+		if imp.Path() == "go.uber.org/zap" {
+			return true
+		}
+	}
+	return false
+}
+
+func (d *LoggerDetector) isLogMethod(methodName string) bool {
+	return d.slogMethods[methodName] || d.zapMethods[methodName]
+}
+
+func (d *LoggerDetector) detectSlogCall(sel *ast.SelectorExpr, call *ast.CallExpr) *LogCall {
+	method := sel.Sel.Name
+	if !d.slogMethods[method] {
+		return nil
+	}
+
+	messages := d.extractSlogMessages(call)
+	if len(messages) == 0 {
+		return nil
+	}
+
+	return &LogCall{
+		Logger:   LoggerSlog,
+		Method:   method,
+		Messages: messages,
+	}
+}
+
+func (d *LoggerDetector) extractSlogMessages(call *ast.CallExpr) []LogMessage {
+	var messages []LogMessage
+
+	if len(call.Args) == 0 {
+		return messages
+	}
+
+	firstArg := call.Args[0]
+	if lit, ok := firstArg.(*ast.BasicLit); ok && lit.Kind == token.STRING {
+		msg := strings.Trim(lit.Value, `"`)
+		messages = append(messages, LogMessage{
+			Text:     msg,
+			Position: lit.Pos(),
+		})
+		return messages
+	}
+
+	if len(call.Args) >= 2 {
+		secondArg := call.Args[1]
+		if lit, ok := secondArg.(*ast.BasicLit); ok && lit.Kind == token.STRING {
+			msg := strings.Trim(lit.Value, `"`)
+			messages = append(messages, LogMessage{
+				Text:     msg,
+				Position: lit.Pos(),
+			})
+		}
+	}
+
+	return messages
+}
+
+func (d *LoggerDetector) detectZapCall(call *ast.CallExpr, method string) *LogCall {
+	if !d.zapMethods[method] {
+		return nil
+	}
+
+	messages := d.extractZapMessages(call, method)
+	if len(messages) == 0 {
+		return nil
+	}
+
+	return &LogCall{
+		Logger:   LoggerZap,
+		Method:   method,
+		Messages: messages,
+	}
+}
+
+func (d *LoggerDetector) extractZapMessages(call *ast.CallExpr, method string) []LogMessage {
+	var messages []LogMessage
+
+	isInfowMethod := strings.HasSuffix(method, "w")
+
+	if isInfowMethod && len(call.Args) > 0 {
+		if lit, ok := call.Args[0].(*ast.BasicLit); ok && lit.Kind == token.STRING {
+			msg := strings.Trim(lit.Value, `"`)
+			messages = append(messages, LogMessage{
+				Text:     msg,
+				Position: lit.Pos(),
+			})
+		}
+	}
+
+	if !isInfowMethod && len(call.Args) > 0 {
+		if lit, ok := call.Args[0].(*ast.BasicLit); ok && lit.Kind == token.STRING {
+			msg := strings.Trim(lit.Value, `"`)
+			messages = append(messages, LogMessage{
+				Text:     msg,
+				Position: lit.Pos(),
+			})
+		}
+	}
+
+	return messages
+}
