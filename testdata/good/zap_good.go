@@ -19,7 +19,7 @@ func GoodZapMessages() {
 	sugar.Error("connection failed")
 	sugar.Warn("something went wrong")
 
-	sugar.Info("user login successful")
+	sugar.Info("user authentication successful")
 	sugar.Debug("api request completed")
 	sugar.Info("session validated")
 }

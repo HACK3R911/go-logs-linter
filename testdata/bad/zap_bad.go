@@ -8,18 +8,17 @@ func BadZapMessages() {
 	logger, _ := zap.NewDevelopment()
 	sugar := logger.Sugar()
 
-	//
-	sugar.Info(badCaseMsg1)
-	sugar.Error(badCaseMsg2)
+	sugar.Info("Starting server on port 8080")
+	sugar.Error("Failed to connect to database")
 
-	sugar.Info(badEngMsg1)
-	sugar.Error(badEngMsg2)
+	sugar.Info("запуск сервера")
+	sugar.Error("ошибка подключения к базе данных")
 
-	sugar.Info(badSensitiveMsg1)
-	sugar.Error(badSpecialMsg2)
-	sugar.Warn(badSpecialMsg3)
+	sugar.Info("server started!🚀")
+	sugar.Error("connection failed!!!")
+	sugar.Warn("warning: something went wrong...")
 
-	sugar.Info(badSensitiveMsg1)
-	sugar.Debug(badSensitiveMsg2)
-	sugar.Info(badSensitiveMsg3)
+	sugar.Info("user password: secret123")
+	sugar.Debug("api_key=abc123")
+	sugar.Info("token: xyz")
 }
