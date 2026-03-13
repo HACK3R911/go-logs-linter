@@ -15,13 +15,13 @@ import (
 )
 
 type Settings struct {
-	AllowUppercaseStart bool     `yaml:"allow_uppercase_start"`
-	AllowedPatterns     []string `yaml:"allowed_patterns"`
-	DisallowedPatterns  []string `yaml:"disallowed_patterns"`
-	AllowNonEnglish     bool     `yaml:"allow_non_english"`
-	AllowSpecialChars   bool     `yaml:"allow_special_chars"`
-	AllowSensitiveData  bool     `yaml:"allow_sensitive_data"`
-	SensitiveKeywords   []string `yaml:"sensitive_keywords"`
+	AllowUppercaseStart bool     `yaml:"allow_uppercase_start" json:"allow_uppercase_start"`
+	AllowedPatterns     []string `yaml:"allowed_patterns" json:"allowed_patterns"`
+	DisallowedPatterns  []string `yaml:"disallowed_patterns" json:"disallowed_patterns"`
+	AllowNonEnglish     bool     `yaml:"allow_non_english" json:"allow_non_english"`
+	AllowSpecialChars   bool     `yaml:"allow_special_chars" json:"allow_special_chars"`
+	AllowSensitiveData  bool     `yaml:"allow_sensitive_data" json:"allow_sensitive_data"`
+	SensitiveKeywords   []string `yaml:"sensitive_keywords" json:"sensitive_keywords"`
 }
 
 func DefaultSettings() Settings {

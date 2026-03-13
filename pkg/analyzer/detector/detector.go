@@ -11,7 +11,6 @@ import (
 const (
 	LoggerSlog LoggerType = iota
 	LoggerZap
-	// LoggerUnknown
 )
 
 type LogCall struct {
@@ -32,6 +31,8 @@ type LoggerDetector struct {
 	zapIdent    string
 	slogMethods map[string]bool
 	zapMethods  map[string]bool
+	impPaths    map[string]bool
+	files       []*ast.File
 }
 
 func NewLoggerDetector() *LoggerDetector {
@@ -58,6 +59,7 @@ func NewLoggerDetector() *LoggerDetector {
 			"Warnw":  true,
 			"Errorw": true,
 		},
+		impPaths: make(map[string]bool),
 	}
 }
 
@@ -74,16 +76,18 @@ func (d *LoggerDetector) Detect(pass *analysis.Pass, call *ast.CallExpr) *LogCal
 
 	methodName := sel.Sel.Name
 
-	if d.isSlogImport(pass, ident) {
+	d.initImpPaths(pass)
+
+	if d.isSlogImport(ident) {
 		return d.detectSlogCall(sel, call)
 	}
 
-	if d.isZapImport(pass, ident) {
+	if d.isZapImport(ident) {
 		return d.detectZapCall(call, methodName)
 	}
 
 	if d.isLogMethod(methodName) {
-		if d.isZapPackageUsed(pass) {
+		if d.isZapPackageUsed() {
 			return d.detectZapCall(call, methodName)
 		}
 	}
@@ -91,35 +95,52 @@ func (d *LoggerDetector) Detect(pass *analysis.Pass, call *ast.CallExpr) *LogCal
 	return nil
 }
 
-func (d *LoggerDetector) isSlogImport(pass *analysis.Pass, ident *ast.Ident) bool {
-	for _, imp := range pass.Pkg.Imports() {
-		if imp.Path() == "log/slog" || imp.Path() == "golang.org/x/exp/slog" {
-			if ident.Name == d.slogIdent || ident.Name == "_" {
-				return true
+func (d *LoggerDetector) initImpPaths(pass *analysis.Pass) {
+	d.impPaths = make(map[string]bool)
+
+	if pass.Pkg != nil && pass.Pkg.Imports() != nil {
+		for _, imp := range pass.Pkg.Imports() {
+			if imp != nil {
+				d.impPaths[imp.Path()] = true
+			}
+		}
+		return
+	}
+
+	if pass.Files != nil {
+		for _, file := range pass.Files {
+			if file != nil && file.Imports != nil {
+				for _, imp := range file.Imports {
+					if imp != nil && imp.Path != nil {
+						path := strings.Trim(imp.Path.Value, `"`)
+						d.impPaths[path] = true
+					}
+				}
 			}
 		}
 	}
-	return false
 }
 
-func (d *LoggerDetector) isZapImport(pass *analysis.Pass, ident *ast.Ident) bool {
-	for _, imp := range pass.Pkg.Imports() {
-		if imp.Path() == "go.uber.org/zap" {
-			if ident.Name == d.zapIdent || ident.Name == "_" {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func (d *LoggerDetector) isZapPackageUsed(pass *analysis.Pass) bool {
-	for _, imp := range pass.Pkg.Imports() {
-		if imp.Path() == "go.uber.org/zap" {
+func (d *LoggerDetector) isSlogImport(ident *ast.Ident) bool {
+	if d.impPaths["log/slog"] || d.impPaths["golang.org/x/exp/slog"] {
+		if ident.Name == d.slogIdent || ident.Name == "_" {
 			return true
 		}
 	}
 	return false
+}
+
+func (d *LoggerDetector) isZapImport(ident *ast.Ident) bool {
+	if d.impPaths["go.uber.org/zap"] {
+		if ident.Name == d.zapIdent || ident.Name == "_" {
+			return true
+		}
+	}
+	return false
+}
+
+func (d *LoggerDetector) isZapPackageUsed() bool {
+	return d.impPaths["go.uber.org/zap"]
 }
 
 func (d *LoggerDetector) isLogMethod(methodName string) bool {

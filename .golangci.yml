@@ -1,0 +1,16 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - loglint
+  settings:
+    custom:
+      loglint:
+        type: module
+        description: Checks log messages follow style rules
+        settings:
+          allow_uppercase_start: false
+          allow_non_english: false
+          allow_special_chars: false
+          allow_sensitive_data: false

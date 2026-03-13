@@ -28,5 +28,5 @@ func (p *LogLintPlugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 }
 
 func (p *LogLintPlugin) GetLoadMode() string {
-	return register.LoadModeTypesInfo
+	return register.LoadModeSyntax
 }

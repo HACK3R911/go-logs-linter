@@ -1,0 +1,7 @@
+version: v2.0.0
+name: custom-golangci-lint
+destination: .
+plugins:
+  - module: 'github.com/HACK3R911/go-logs-linter'
+    import: 'github.com/HACK3R911/go-logs-linter/pkg/plugin'
+    path: .
