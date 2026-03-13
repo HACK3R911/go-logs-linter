@@ -141,6 +141,57 @@ make test
 make lint
 ```
 
+## Golangci-lint плагин
+
+### Сборка кастомного golangci-lint
+
+```bash
+make custom
+```
+
+Это создаст бинарный файл `custom-golangci-lint` с интегрированным плагином loglint.
+
+### Использование
+
+Создайте `.golangci.yml` в корне вашего проекта:
+
+```yaml
+version: "2"
+
+linters:
+  enable:
+    - loglint
+
+linters-settings:
+  custom:
+    loglint:
+      type: module
+      description: Checks log messages follow style rules
+      settings:
+        allow_uppercase_start: false
+        allow_non_english: false
+        allow_special_chars: false
+        allow_sensitive_data: false
+```
+
+Затем запустите:
+
+```bash
+./custom-golangci-lint run ./...
+```
+
+### Настройки плагина
+
+| Параметр | Тип | Описание | По умолчанию |
+|----------|-----|----------|--------------|
+| allow_uppercase_start | bool | Разрешить заглавные буквы в начале | false |
+| allow_non_english | bool | Разрешить неанглийские символы | false |
+| allow_special_chars | bool | Разрешить спецсимволы и эмодзи | false |
+| allow_sensitive_data | bool | Разрешить чувствительные данные | false |
+| allowed_patterns | []string | Разрешенные regex паттерны | [] |
+| disallowed_patterns | []string | Запрещенные regex паттерны | [] |
+| sensitive_keywords | []string | Доп. слова для детекции данных | [...] |
+
 ## CI/CD
 
 Инструмент можно интегрировать в GitHub Actions:
