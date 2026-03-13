@@ -26,12 +26,12 @@ type RulesConfig struct {
 
 func Load(path string) (*Config, error) {
 	v := viper.New()
+	v.SetConfigType("yaml")
 
 	if path != "" {
 		v.SetConfigFile(path)
 	} else {
 		v.SetConfigName("config")
-		v.SetConfigType("yaml")
 		v.AddConfigPath(".")
 		v.AddConfigPath("$HOME")
 	}
@@ -43,12 +43,19 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("reading config: %w", err)
 	}
 
-	var cfg Config
-	if err := v.Unmarshal(&cfg); err != nil {
-		return nil, fmt.Errorf("unmarshaling config: %w", err)
+	cfg := &Config{
+		Rules: RulesConfig{
+			AllowUppercaseStart: v.GetBool("rules.allow_uppercase_start"),
+			AllowedPatterns:     v.GetStringSlice("rules.allowed_patterns"),
+			DisallowedPatterns:  v.GetStringSlice("rules.disallowed_patterns"),
+			AllowNonEnglish:     v.GetBool("rules.allow_non_english"),
+			AllowSpecialChars:   v.GetBool("rules.allow_special_chars"),
+			AllowSensitiveData:  v.GetBool("rules.allow_sensitive_data"),
+			SensitiveKeywords:   v.GetStringSlice("rules.sensitive_keywords"),
+		},
 	}
 
-	return &cfg, nil
+	return cfg, nil
 }
 
 func (c *Config) ToSettings() analyzer.Settings {

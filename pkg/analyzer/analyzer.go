@@ -8,7 +8,6 @@ import (
 
 	"github.com/HACK3R911/go-logs-linter/pkg/analyzer/detector"
 	"github.com/HACK3R911/go-logs-linter/pkg/analyzer/rules"
-	"github.com/spf13/viper"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
@@ -34,40 +33,6 @@ func DefaultSettings() Settings {
 		AllowSensitiveData:  false,
 		SensitiveKeywords:   []string{"password", "token", "secret", "key", "api_key", "apiKey"},
 	}
-}
-
-func LoadConfig(path string) (*Settings, error) {
-	if path == "" {
-		return nil, nil
-	}
-	v := viper.New()
-	v.SetConfigFile(path)
-	if err := v.ReadInConfig(); err != nil {
-		return nil, fmt.Errorf("reading config: %w", err)
-	}
-	var settings Settings
-	if v.IsSet("rules.allow_uppercase_start") {
-		settings.AllowUppercaseStart = v.GetBool("rules.allow_uppercase_start")
-	}
-	if v.IsSet("rules.allowed_patterns") {
-		settings.AllowedPatterns = v.GetStringSlice("rules.allowed_patterns")
-	}
-	if v.IsSet("rules.disallowed_patterns") {
-		settings.DisallowedPatterns = v.GetStringSlice("rules.disallowed_patterns")
-	}
-	if v.IsSet("rules.allow_non_english") {
-		settings.AllowNonEnglish = v.GetBool("rules.allow_non_english")
-	}
-	if v.IsSet("rules.allow_special_chars") {
-		settings.AllowSpecialChars = v.GetBool("rules.allow_special_chars")
-	}
-	if v.IsSet("rules.allow_sensitive_data") {
-		settings.AllowSensitiveData = v.GetBool("rules.allow_sensitive_data")
-	}
-	if v.IsSet("rules.sensitive_keywords") {
-		settings.SensitiveKeywords = v.GetStringSlice("rules.sensitive_keywords")
-	}
-	return &settings, nil
 }
 
 type logLintAnalyzer struct {
