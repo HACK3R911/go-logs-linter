@@ -14,14 +14,21 @@ const (
 )
 
 type LogCall struct {
-	Logger   LoggerType
-	Method   string
-	Messages []LogMessage
+	Logger        LoggerType
+	Method        string
+	Messages      []LogMessage
+	Concatenation ConcatenationInfo
 }
 
 type LogMessage struct {
 	Text     string
 	Position token.Pos
+}
+
+type ConcatenationInfo struct {
+	IsConcatenation bool
+	VarNames        []string
+	ZapKeys         []string
 }
 
 type LoggerType int
@@ -158,11 +165,46 @@ func (d *LoggerDetector) detectSlogCall(sel *ast.SelectorExpr, call *ast.CallExp
 		return nil
 	}
 
+	concat := d.extractConcatenation(call)
+
 	return &LogCall{
-		Logger:   LoggerSlog,
-		Method:   method,
-		Messages: messages,
+		Logger:        LoggerSlog,
+		Method:        method,
+		Messages:      messages,
+		Concatenation: concat,
 	}
+}
+
+func (d *LoggerDetector) extractConcatenation(call *ast.CallExpr) ConcatenationInfo {
+	var info ConcatenationInfo
+
+	if len(call.Args) == 0 {
+		return info
+	}
+
+	firstArg := call.Args[0]
+	if binExpr, ok := firstArg.(*ast.BinaryExpr); ok && binExpr.Op == token.ADD {
+		info.IsConcatenation = true
+		info.VarNames = append(info.VarNames, d.extractVarNames(binExpr)...)
+	}
+
+	return info
+}
+
+func (d *LoggerDetector) extractVarNames(expr ast.Expr) []string {
+	var names []string
+
+	switch e := expr.(type) {
+	case *ast.BinaryExpr:
+		names = append(names, d.extractVarNames(e.X)...)
+		names = append(names, d.extractVarNames(e.Y)...)
+	case *ast.Ident:
+		names = append(names, e.Name)
+	case *ast.ParenExpr:
+		names = append(names, d.extractVarNames(e.X)...)
+	}
+
+	return names
 }
 
 func (d *LoggerDetector) extractSlogMessages(call *ast.CallExpr) []LogMessage {
@@ -179,6 +221,17 @@ func (d *LoggerDetector) extractSlogMessages(call *ast.CallExpr) []LogMessage {
 			Text:     msg,
 			Position: lit.Pos(),
 		})
+		return messages
+	}
+
+	if binExpr, ok := firstArg.(*ast.BinaryExpr); ok && binExpr.Op == token.ADD {
+		if lit, ok := binExpr.X.(*ast.BasicLit); ok && lit.Kind == token.STRING {
+			msg := strings.Trim(lit.Value, `"`)
+			messages = append(messages, LogMessage{
+				Text:     msg,
+				Position: lit.Pos(),
+			})
+		}
 		return messages
 	}
 
@@ -206,11 +259,34 @@ func (d *LoggerDetector) detectZapCall(call *ast.CallExpr, method string) *LogCa
 		return nil
 	}
 
-	return &LogCall{
-		Logger:   LoggerZap,
-		Method:   method,
-		Messages: messages,
+	concat := ConcatenationInfo{}
+	if strings.HasSuffix(method, "w") {
+		concat.ZapKeys = d.extractZapKeys(call)
 	}
+
+	return &LogCall{
+		Logger:        LoggerZap,
+		Method:        method,
+		Messages:      messages,
+		Concatenation: concat,
+	}
+}
+
+func (d *LoggerDetector) extractZapKeys(call *ast.CallExpr) []string {
+	var keys []string
+
+	if len(call.Args) < 3 {
+		return keys
+	}
+
+	for i := 1; i < len(call.Args)-1; i += 2 {
+		if lit, ok := call.Args[i].(*ast.BasicLit); ok && lit.Kind == token.STRING {
+			key := strings.Trim(lit.Value, `"`)
+			keys = append(keys, key)
+		}
+	}
+
+	return keys
 }
 
 func (d *LoggerDetector) extractZapMessages(call *ast.CallExpr, method string) []LogMessage {

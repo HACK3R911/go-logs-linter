@@ -102,7 +102,7 @@ func (a *logLintAnalyzer) checkLogCall(pass *analysis.Pass, call *ast.CallExpr) 
 		}
 
 		if !a.settings.AllowSensitiveData {
-			diagnostic = rules.CheckSensitiveData(msg.Text, msg.Position, a.settings.SensitiveKeywords)
+			diagnostic = rules.CheckSensitiveData(logCall, a.settings.SensitiveKeywords)
 			if diagnostic != nil {
 				pass.Report(*diagnostic)
 			}
