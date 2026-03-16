@@ -1,16 +1,17 @@
 package rules
 
 import (
-	"go/token"
-	"regexp"
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
+
+	"github.com/HACK3R911/go-logs-linter/pkg/analyzer/detector"
 )
 
 var DefaultSensitiveKeywords = []string{
 	"password",
 	"passwd",
+	"pwd",
 	"secret",
 	"token",
 	"api_key",
@@ -46,47 +47,57 @@ var DefaultSensitiveKeywords = []string{
 	"basicauth",
 	"client_secret",
 	"client-secret",
+	"secret_key",
+	"secret-key",
+	"encryption_key",
+	"encryption-key",
 }
 
-var SensitivePatterns = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)(password|passwd|pwd)\s*[:=]\s*\S+`),
-	regexp.MustCompile(`(?i)(secret|token)\s*[:=]\s*\S+`),
-	regexp.MustCompile(`(?i)(api[_-]?key)\s*[:=]\s*\S+`),
-	regexp.MustCompile(`(?i)(bearer|jwt)\s+\S+`),
-	regexp.MustCompile(`(?i)(basic\s+auth)\s*[:=]\s*\S+`),
-	regexp.MustCompile(`(?i)(private[_-]?key)\s*[:=]\s*\S+`),
-	regexp.MustCompile(`(?i)(access[_-]?token)\s*[:=]\s*\S+`),
-	regexp.MustCompile(`(?i)(refresh[_-]?token)\s*[:=]\s*\S+`),
-	regexp.MustCompile(`\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b`),
-	regexp.MustCompile(`\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b`),
-}
+func CheckSensitiveData(logCall *detector.LogCall, customKeywords []string) *analysis.Diagnostic {
+	if logCall == nil {
+		return nil
+	}
 
-func CheckSensitiveData(msg string, pos token.Pos, customKeywords []string) *analysis.Diagnostic {
+	if len(logCall.Messages) == 0 {
+		return nil
+	}
+
 	keywords := DefaultSensitiveKeywords
 	if len(customKeywords) > 0 {
 		keywords = customKeywords
 	}
 
-	lowerMsg := strings.ToLower(msg)
+	position := logCall.Messages[0].Position
+	concat := logCall.Concatenation
 
-	for _, keyword := range keywords {
-		if strings.Contains(lowerMsg, keyword) {
-			return &analysis.Diagnostic{
-				Pos:      pos,
-				End:      token.Pos(int(pos) + len(msg)),
-				Category: "security",
-				Message:  "log message may contain sensitive data: '" + keyword + "'",
+	if concat.IsConcatenation {
+		for _, varName := range concat.VarNames {
+			lowerVarName := strings.ToLower(varName)
+			for _, keyword := range keywords {
+				lowerKeyword := strings.ToLower(keyword)
+				if strings.Contains(lowerVarName, lowerKeyword) {
+					return &analysis.Diagnostic{
+						Pos:      position,
+						End:      position,
+						Category: "security",
+						Message:  "log message may contain sensitive data in concatenation: variable '" + varName + "'",
+					}
+				}
 			}
 		}
 	}
 
-	for _, pattern := range SensitivePatterns {
-		if pattern.MatchString(msg) {
-			return &analysis.Diagnostic{
-				Pos:      pos,
-				End:      token.Pos(int(pos) + len(msg)),
-				Category: "security",
-				Message:  "log message may contain sensitive data pattern",
+	for _, zapKey := range concat.ZapKeys {
+		lowerKey := strings.ToLower(zapKey)
+		for _, keyword := range keywords {
+			lowerKeyword := strings.ToLower(keyword)
+			if strings.Contains(lowerKey, lowerKeyword) {
+				return &analysis.Diagnostic{
+					Pos:      position,
+					End:      position,
+					Category: "security",
+					Message:  "log message may contain sensitive data in zap key: '" + zapKey + "'",
+				}
 			}
 		}
 	}

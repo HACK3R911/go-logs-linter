@@ -4,7 +4,7 @@
 rules:
   # Allow log messages to start with uppercase letter
   # Default: false
-  allow_uppercase_start: true
+  allow_uppercase_start: false
 
   # Regex patterns that log messages must match
   # If specified, messages MUST match at least one pattern
@@ -23,15 +23,15 @@ rules:
 
   # Allow non-English characters in log messages
   # Default: false
-  allow_non_english: true
+  allow_non_english: false
 
   # Allow special characters (non-alphanumeric, non-whitespace)
   # Default: false
-  allow_special_chars: true
+  allow_special_chars: false
 
   # Allow potentially sensitive data in log messages
   # Default: false
-  allow_sensitive_data: true
+  allow_sensitive_data: false
 
   # Keywords that indicate sensitive data
   # Used when allow_sensitive_data is false
