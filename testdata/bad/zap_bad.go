@@ -21,4 +21,12 @@ func BadZapMessages() {
 	sugar.Info("user password: secret123")
 	sugar.Debug("api_key=abc123")
 	sugar.Info("token: xyz")
+
+	password := "secret123"
+	apiKey := "abc123"
+	token := "xyz"
+
+	sugar.Infow("user login", "password", password)
+	sugar.Debugw("api request", "api_key", apiKey)
+	sugar.Infow("token info", "token", token)
 }

@@ -18,4 +18,12 @@ func BadSlogMessages() {
 	slog.Info("user password: secret123")
 	slog.Debug("api_key=abc123")
 	slog.Info("token: xyz")
+
+	password := "secret123"
+	apiKey := "abc123"
+	token := "xyz"
+
+	slog.Info("user password: " + password)
+	slog.Debug("api_key=" + apiKey)
+	slog.Info("token: " + token)
 }
